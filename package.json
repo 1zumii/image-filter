@@ -1,0 +1,10 @@
+{
+  "name": "image-filter",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "enquirer": "^2.3.6"
+  }
+}
