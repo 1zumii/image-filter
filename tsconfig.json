@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.paths.json",
+  "include": [
+    "src",
+  ],
+  "compilerOptions": {
+    "baseUrl": "./",
+    "noEmit": true,
+    "target": "ESNext",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true
+  },
+}
