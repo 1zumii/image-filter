@@ -37,8 +37,10 @@
     "@typescript-eslint/no-shadow": [
       "error"
     ],
+    // https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-named-default.md
+    "import/no-named-default": "warn",
     // https://eslint.org/docs/latest/rules/no-underscore-dangle
-    "no-underscore-dangle": "warn",
+    "no-underscore-dangle": "off",
     // https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/member-delimiter-style.md
     "@typescript-eslint/member-delimiter-style": [
       "error",

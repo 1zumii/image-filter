@@ -1,17 +1,17 @@
 {
   "name": "image-filter",
   "scripts": {
-    "start": "ts-node src/index.ts",
+    "dev": "ts-node src/index.ts",
     "build": "rm -rf dist && tsc --project tsconfig.build.json",
-    "start:node": "node dist/index.js",
     "list-config": "ts-node --showConfig",
     "eslint": "eslint \"src/**/*.{ts,js}\""
   },
   "license": "MIT",
   "dependencies": {
+    "@types/sharp": "^0.31.0",
     "chalk": "4.1.2",
     "enquirer": "^2.3.6",
-    "jimp": "^0.16.1"
+    "sharp": "^0.31.2"
   },
   "devDependencies": {
     "@types/node": "^18.0.0",
