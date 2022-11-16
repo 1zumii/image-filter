@@ -1,6 +1,3 @@
-/* eslint-disable no-plusplus */
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable no-await-in-loop */
 import { default as $path } from 'path';
 import chalk from 'chalk';
 import $ from 'sharp';
@@ -8,6 +5,7 @@ import { IMAGE_FILE_TYPES } from './constant';
 import type { Ratio } from './constant';
 import { getAllFilesRecursively, getValidDirectoryPath } from './file-handler';
 import type { Params as ProcessorParams } from './prompt';
+import { asyncArrayReduceSuccessively } from './utils/async-array-methods';
 
 export type Image = {
   fileName: string;
@@ -100,28 +98,31 @@ export class ImageProcessor {
 
   start = async (): Promise<void> => {
     const originImages = await this.readImages();
-    const processorParams: ProcessorParams[] = [];
 
-    // TODO: temp log for debug
+    // DEBUG: temp log
     console.log('start', originImages.length);
 
     // get all params
-    const prompts = this.processorMap.map(([prompt]) => prompt);
-    for (const prompt of prompts) {
-      const params = await prompt();
-      processorParams.push(params);
-    }
+    const processorParams: ProcessorParams[] = await asyncArrayReduceSuccessively(
+      this.processorMap.map(([prompt]) => prompt),
+      async (prevResult, prompt) => {
+        const params = await prompt();
+        return [...prevResult, params];
+      },
+      [] as ProcessorParams[],
+    );
 
     // call all processor functions with corresponding params
-    let resultImages = originImages;
-    for (let i = 0; i < this.processorMap.length; i++) {
-      const processor = this.processorMap[i][1];
-      const params = processorParams[i];
-      const result = await processor(resultImages, params);
-      resultImages = result;
-    }
+    const resultImages: Image[] = await asyncArrayReduceSuccessively(
+      this.processorMap.map(([_, processor]) => processor),
+      async (prevResult, processor, index) => {
+        const params = processorParams[index];
+        return processor(prevResult, params);
+      },
+      originImages,
+    );
 
-    // TODO: temp log for debug
+    // DEBUG: temp log
     console.log('end', resultImages.length);
     resultImages.forEach(async (image, index) => {
       const originImageResolution = await getImageResolution(originImages[index]);

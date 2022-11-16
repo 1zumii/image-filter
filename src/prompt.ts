@@ -78,7 +78,7 @@ export const getResolutionFilterParams = async (): Promise<ResolutionFilterParam
       return `${width}×${height}`;
     }),
   });
-  const resolution = resolutionToken.split(':').map((i) => (i ? Number(i) : NaN));
+  const resolution = resolutionToken.split('×').map((i) => (i ? Number(i) : NaN));
   if (resolution.length !== 2 || resolution.some((i) => Number.isNaN(i))) return { mode: 'off' };
 
   const [width, height] = resolution;
