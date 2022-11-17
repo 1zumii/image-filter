@@ -8,49 +8,50 @@ import {
 import { asyncArrayFilter } from './utils/async-array-methods';
 import log from './utils/log';
 
-// main entry
-try {
-  ImageProcessor
-    .create(
-      getInputPath,
-      getOutputPath,
-    )
-    .registerProcessor(
-      getResolutionFilterParams,
-      async (images, params) => {
-        if (params.mode === 'off') return images;
-        const result = await asyncArrayFilter(
-          images,
-          async (image) => {
-            const { width, height } = await getImageResolution(image);
-            return params.mode === 'at-least'
-              ? width >= params.resolution.width && height >= params.resolution.height
-              : width === params.resolution.width && height === params.resolution.height;
-          },
-        );
-        return result;
-      },
-    )
-    .registerProcessor(
-      getRatioCropParams,
-      async (images, params) => {
-        if (params.mode === 'off') return images;
-        const result = await Promise.allSettled(
-          images.map((i) => cropImageByRatio(i, params.ratio)),
-        );
-
-        return result
-          .map<Image | undefined>((p) => {
-            if (p.status === 'rejected') {
-              return undefined;
-            }
-            return p.value;
-          })
-          .filter((p) => !!p);
-      },
-    )
-    .start();
-} catch (reason) {
-  log.error('👻', chalk.red('Opps!'), '\n', reason.message ?? '', '\n');
+const handleError = (error: Error): never => {
+  log.error('\n', '👻', chalk.red('Opps!'), '\n', error.message ?? '', '\n');
   process.exit(1);
-}
+};
+process.on('uncaughtException', handleError);
+
+// main entry
+ImageProcessor
+  .create(
+    getInputPath,
+    getOutputPath,
+  )
+  .registerProcessor(
+    getResolutionFilterParams,
+    async (images, params) => {
+      if (params.mode === 'off') return images;
+      const result = await asyncArrayFilter(
+        images,
+        async (image) => {
+          const { width, height } = await getImageResolution(image);
+          return params.mode === 'at-least'
+            ? width >= params.resolution.width && height >= params.resolution.height
+            : width === params.resolution.width && height === params.resolution.height;
+        },
+      );
+      return result;
+    },
+  )
+  .registerProcessor(
+    getRatioCropParams,
+    async (images, params) => {
+      if (params.mode === 'off') return images;
+      const result = await Promise.allSettled(
+        images.map((i) => cropImageByRatio(i, params.ratio)),
+      );
+
+      return result
+        .map<Image | undefined>((p) => {
+          if (p.status === 'rejected') {
+            return undefined;
+          }
+          return p.value;
+        })
+        .filter((p) => !!p);
+    },
+  )
+  .start();

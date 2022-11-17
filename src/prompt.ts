@@ -7,7 +7,7 @@ export const getInputPath = async (): Promise<string> => {
   const { path } = await prompt<{path: string}>({
     name: 'path',
     type: 'input',
-    message: 'Enter the path of images that want to process',
+    message: 'Input path',
   });
 
   return path;
@@ -17,7 +17,7 @@ export const getOutputPath = async (): Promise<string> => {
   const { path } = await prompt<{path: string}>({
     name: 'path',
     type: 'input',
-    message: 'Enter the path of images that want to output',
+    message: 'Output path',
   });
 
   return path;
@@ -34,7 +34,7 @@ export const getRatioCropParams = async (): Promise<RatioCropParams> => {
   const { needCrop } = await prompt<{needCrop: boolean}>({
     type: 'confirm',
     name: 'needCrop',
-    message: 'Need Crop images by exactly ratio',
+    message: 'Crop images by exactly ratio',
     format: (e) => (e ? 'yes' : 'No'),
   });
   if (!needCrop) return { mode: 'off' };
@@ -64,7 +64,7 @@ export const getResolutionFilterParams = async (): Promise<ResolutionFilterParam
   const { filterMode } = await prompt<{filterMode: ResolutionFilterParams['mode']}>({
     type: 'select',
     name: 'filterMode',
-    message: 'Need filter images by limit resolution',
+    message: 'Filter images by limit resolution',
     choices: ['off', 'at-least', 'exactly'],
   });
   if (filterMode === 'off') return { mode: 'off' };

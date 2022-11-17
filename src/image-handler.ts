@@ -1,9 +1,10 @@
 import { default as $path } from 'path';
 import chalk from 'chalk';
+import { default as $fs } from 'fs-extra';
 import $ from 'sharp';
 import { IMAGE_FILE_TYPES } from './constant';
 import type { Ratio } from './constant';
-import { getAllFilesRecursively, getValidDirectoryPath } from './file-handler';
+import { getAllFilesRecursively, getValidDirectoryPath, transformToAbsolutePath } from './file-handler';
 import type { Params as ProcessorParams } from './prompt';
 import { asyncArrayReduceSuccessively } from './utils/async-array-methods';
 
@@ -62,7 +63,11 @@ export class ImageProcessor {
 
   private getInputPath: () => Promise<string>;
 
+  private inputPath: string;
+
   private getOutputPath: () => Promise<string>;
+
+  private outputPath: string;
 
   constructor(
     getInputPath: () => Promise<string>,
@@ -77,15 +82,41 @@ export class ImageProcessor {
   ) => new ImageProcessor(...params);
 
   private readImages = async (): Promise<Image[]> => {
-    const inputPath = await this.getInputPath();
-    const sourcePath = await getValidDirectoryPath(inputPath);
-    const imagePaths = await getAllFilesRecursively(sourcePath, IMAGE_FILE_TYPES);
+    const sourcePath = await this.getInputPath();
+    this.inputPath = await getValidDirectoryPath(sourcePath);
+    const imagePaths = await getAllFilesRecursively(this.inputPath, IMAGE_FILE_TYPES);
 
     return imagePaths.map<Image>((path) => {
       const data = $(path);
       const fileName = $path.basename(path);
       return { data, fileName };
     });
+  };
+
+  private writeImages = async (
+    resultImages: Image[],
+    onSuccess: (info: $.OutputInfo) => void,
+    onError: (reason: Error) => void,
+  ): Promise<void> => {
+    if (this.inputPath === this.outputPath) {
+      // TODO: double confirm prompt
+    }
+    await $fs.emptyDir(this.outputPath);
+
+    await Promise.all(
+      // fire promises to output image concurrently
+      resultImages.map(
+        async (image): Promise<void> => {
+          const outputFilePath = $path.resolve(this.outputPath, image.fileName);
+          try {
+            const info = await image.data.toFile(outputFilePath);
+            onSuccess(info);
+          } catch (reason) {
+            onError(reason);
+          }
+        },
+      ),
+    );
   };
 
   registerProcessor = <Params extends ProcessorParams>(
@@ -112,6 +143,10 @@ export class ImageProcessor {
       [] as ProcessorParams[],
     );
 
+    // get output path
+    const sourceOutputPath = await this.getOutputPath();
+    this.outputPath = transformToAbsolutePath(sourceOutputPath);
+
     // call all processor functions with corresponding params
     const resultImages: Image[] = await asyncArrayReduceSuccessively(
       this.processorMap.map(([_, processor]) => processor),
@@ -122,9 +157,20 @@ export class ImageProcessor {
       originImages,
     );
 
+    // output images
+    await this.writeImages(
+      resultImages,
+      () => {
+        // TODO:
+      },
+      () => {
+        // TODO:
+      },
+    );
+
     // DEBUG: temp log
     console.log('end', resultImages.length);
-    resultImages.forEach(async (image, index) => {
+    /* resultImages.forEach(async (image, index) => {
       const originImageResolution = await getImageResolution(originImages[index]);
       const { info } = await image.data.toBuffer({ resolveWithObject: true });
       const { width, height } = info;
@@ -140,6 +186,6 @@ export class ImageProcessor {
         '\t\t',
         chalk.magentaBright(image.fileName),
       );
-    });
+    }); */
   };
 }

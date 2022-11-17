@@ -5,20 +5,24 @@ import chalk from 'chalk';
 import asyncLoop from './utils/async-loop';
 
 /**
- * 将相对 home 目录的路径，转化成绝对路径
+ * 将相对 home 目录的路径，或相对路径
+ * 转化成绝对路径
  */
-export const validatePathForHomeDir = (p: string): string => {
-  if (!p.startsWith('~')) {
-    return p;
+export const transformToAbsolutePath = (p: string): string => {
+  if (p.startsWith('~')) {
+    return `${os.homedir()}${p.slice(1)}`;
   }
-  return `${os.homedir()}${p.slice(1)}`;
+  if (!path.isAbsolute(p)) {
+    return path.resolve(__dirname, p);
+  }
+  return p;
 };
 
 /**
  * 转换出一个合法的目录路径
  */
 export const getValidDirectoryPath = async (p: string): Promise<string> => {
-  const validPath = validatePathForHomeDir(p.trim());
+  const validPath = transformToAbsolutePath(p.trim());
   const status = await fs.stat(validPath);
   if (!status.isDirectory()) {
     throw new Error(`${chalk.red('Path is not a directory: ')}${validPath}`);
