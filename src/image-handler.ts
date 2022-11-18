@@ -5,8 +5,9 @@ import $ from 'sharp';
 import { IMAGE_FILE_TYPES } from './constant';
 import type { Ratio } from './constant';
 import { getAllFilesRecursively, getValidDirectoryPath, transformToAbsolutePath } from './file-handler';
-import type { Params as ProcessorParams } from './prompt';
+import { Params as ProcessorParams, RETURN } from './prompt';
 import { asyncArrayReduceSuccessively } from './utils/async-array-methods';
+import log from './utils/log';
 
 export type Image = {
   fileName: string;
@@ -95,28 +96,33 @@ export class ImageProcessor {
 
   private writeImages = async (
     resultImages: Image[],
-    onSuccess: (info: $.OutputInfo) => void,
-    onError: (reason: Error) => void,
-  ): Promise<void> => {
+    onSuccess: (info: $.OutputInfo, image: Image) => void,
+    onError: (reason: Error, image: Image) => void,
+  ): Promise<number> => {
     if (this.inputPath === this.outputPath) {
       // TODO: double confirm prompt
     }
     await $fs.emptyDir(this.outputPath);
 
-    await Promise.all(
+    const result = await Promise.allSettled(
       // fire promises to output image concurrently
       resultImages.map(
         async (image): Promise<void> => {
           const outputFilePath = $path.resolve(this.outputPath, image.fileName);
           try {
             const info = await image.data.toFile(outputFilePath);
-            onSuccess(info);
+            onSuccess(info, image);
           } catch (reason) {
-            onError(reason);
+            onError(reason, image);
           }
         },
       ),
     );
+
+    return result
+      .map((p) => p.status === 'fulfilled')
+      .filter((e) => e)
+      .length;
   };
 
   registerProcessor = <Params extends ProcessorParams>(
@@ -129,9 +135,6 @@ export class ImageProcessor {
 
   start = async (): Promise<void> => {
     const originImages = await this.readImages();
-
-    // DEBUG: temp log
-    console.log('start', originImages.length);
 
     // get all params
     const processorParams: ProcessorParams[] = await asyncArrayReduceSuccessively(
@@ -157,35 +160,20 @@ export class ImageProcessor {
       originImages,
     );
 
+    // eslint-disable-next-line no-console
+    console.log('\n');
     // output images
-    await this.writeImages(
+    const successCount = await this.writeImages(
       resultImages,
-      () => {
-        // TODO:
+      (info, image) => {
+        const fileName = $path.basename(image.fileName);
+        log.info(RETURN, chalk.bgGreen(' Done '), ' ', chalk.magentaBright(fileName), '\t=> ', chalk.cyan(`${info.width}×${info.height}`));
       },
-      () => {
-        // TODO:
+      (reason, image) => {
+        const fileName = $path.basename(image.fileName);
+        log.error(RETURN, chalk.bgRedBright(' Failed '), ' ', chalk.magentaBright(fileName), '\n', reason, '\n');
       },
     );
-
-    // DEBUG: temp log
-    console.log('end', resultImages.length);
-    /* resultImages.forEach(async (image, index) => {
-      const originImageResolution = await getImageResolution(originImages[index]);
-      const { info } = await image.data.toBuffer({ resolveWithObject: true });
-      const { width, height } = info;
-      const common = maxCommonDivisor(height, width);
-      console.log(
-        chalk.cyan(`${originImageResolution.width}×${originImageResolution.height}`),
-        '\t',
-        '=>',
-        '\t',
-        chalk.green(`${width}×${height}`),
-        '\t',
-        `${width / common}:${height / common}`,
-        '\t\t',
-        chalk.magentaBright(image.fileName),
-      );
-    }); */
+    log.info(RETURN, chalk.bgGreen(' Done '), ' ', `${successCount} images`);
   };
 }

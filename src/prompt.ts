@@ -3,6 +3,9 @@ import {
   Ratio, RATIOS, Resolution, RESOLUTIONS,
 } from './constant';
 
+// https://en.wikipedia.org/wiki/ANSI_escape_code#CSI_(Control_Sequence_Introducer)_sequences
+export const RETURN = `\x1b[1A${' '.repeat(100)}\x1b[1G`;
+
 export const getInputPath = async (): Promise<string> => {
   const { path } = await prompt<{path: string}>({
     name: 'path',
