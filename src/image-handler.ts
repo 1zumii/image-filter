@@ -5,9 +5,9 @@ import $ from 'sharp';
 import { IMAGE_FILE_TYPES } from './constant';
 import type { Ratio } from './constant';
 import { getAllFilesRecursively, getValidDirectoryPath, transformToAbsolutePath } from './file-handler';
-import { Params as ProcessorParams, RETURN } from './prompt';
+import { Params as ProcessorParams } from './prompt';
 import { asyncArrayReduceSuccessively } from './utils/async-array-methods';
-import log from './utils/log';
+import log, { RETURN } from './utils/log';
 
 export type Image = {
   fileName: string;

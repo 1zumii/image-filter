@@ -1,13 +1,17 @@
 *Recommend use PNPM*
 
-## ToDo List
+![](./docs/assets/screenshot.gif)
 
-- [x] get image info
-- [x] cut images to same ratio
-- [x] filter by resolution
-- [x] write to target folder
-- [x] frendly terminal display
-- [ ] README
+## ⌨️ Development
+
+```shell
+git clone git@github.com:izumiiAoba/image-filter.git
+cd image-filter
+pnpm install
+pnpm run dev
+```
+
+## 🔨 ToDo List
+
 - [ ] sort images by color and grayscale
-- [ ] build to exe file, not relay on nodejs
-- [ ] catch all error in top level catch
+
