@@ -1,0 +1,2 @@
+- [ ] crop images while filtering
+- [ ] interactive form

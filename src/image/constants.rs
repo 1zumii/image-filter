@@ -1,4 +1,4 @@
-type RawResolution = (u16, u16);
+type RawResolution = (u32, u32);
 
 type RawRatio = (u8, u8);
 

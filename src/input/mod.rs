@@ -1,34 +1,39 @@
 mod filter_option;
 
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
 use filter_option::ResolutionFilterOption;
-use std::{env, fs, path::Path};
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 
 use crate::image::{
     constants::{RATIO_OPTIONS, RESOLUTION_OPTIONS},
     Ratio, Resolution,
 };
 
-pub fn get_process_dir() -> anyhow::Result<(String, fs::ReadDir)> {
+pub fn get_process_dir() -> anyhow::Result<(PathBuf, PathBuf)> {
     let args: Vec<String> = env::args().collect();
 
     // args[0] is exec path
-    if args.len() != 2 {
-        return Err(anyhow!("Only accept one argument as input path."));
+    if args.len() != 3 {
+        return Err(anyhow!("Pass in two arguments for input and output path"));
     }
 
-    let path = Path::new(&args[1]);
-    let read_dir =
-        fs::read_dir(path).context("Input path is not an existing or accessible directory")?;
+    let read_dir_path = Path::new(&args[1]).to_owned();
+    let output_dir_path = Path::new(&args[2]).to_owned();
+    if !read_dir_path.is_dir() {
+        return Err(anyhow!(
+            "Input path is not an existing or accessible directory"
+        ));
+    }
+    if !output_dir_path.is_dir() {
+        return Err(anyhow!(
+            "Output path is not an existing or accessible directory"
+        ));
+    }
 
-    let dir_name = path
-        .file_name()
-        .ok_or(anyhow!("Error occurred in parsing directory"))?
-        .to_str()
-        .ok_or(anyhow!("Error occurred in parsing directory"))?
-        .to_string();
-
-    Ok((dir_name, read_dir))
+    Ok((read_dir_path, output_dir_path))
 }
 
 fn filter_by_resolution() -> Option<(ResolutionFilterOption, Resolution)> {

@@ -1,11 +1,12 @@
 pub mod constants;
+pub mod handler;
 
 use std::fmt::Display;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Resolution {
-    width: u16,
-    height: u16,
+    width: u32,
+    height: u32,
 }
 
 impl Display for Resolution {
@@ -14,8 +15,8 @@ impl Display for Resolution {
     }
 }
 
-impl From<(u16, u16)> for Resolution {
-    fn from((width, height): (u16, u16)) -> Self {
+impl From<(u32, u32)> for Resolution {
+    fn from((width, height): (u32, u32)) -> Self {
         Self { width, height }
     }
 }

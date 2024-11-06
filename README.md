@@ -1,5 +1,5 @@
 ## ⌨️ Development
 
 ```shell
-cargo run $PATH_TO_PROCESS_FOLDER
+cargo run $INPUT_PATH $OUTPUT_PATH
 ```
