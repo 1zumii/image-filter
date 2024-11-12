@@ -1,34 +1,49 @@
+use anyhow::anyhow;
 use image::{GenericImageView, ImageReader};
 use std::{
-    fs,
+    cmp, fs,
     path::{Path, PathBuf},
     time,
 };
 use tokio::task;
 
-pub async fn process_images(read_dir: PathBuf) -> anyhow::Result<()> {
+use crate::input::{FilterOption, ResolutionFilterOption};
+
+use super::{Ratio, Resolution};
+
+pub async fn process_images(
+    read_dir: PathBuf,
+    option: FilterOption,
+    output_dir: PathBuf,
+) -> anyhow::Result<()> {
     let mut tasks = task::JoinSet::new();
 
     // DEBUG:
     let now = time::Instant::now();
 
     visit_dirs(read_dir.as_path(), &mut |entry| {
-        // TODO:
-        // 1. asynchronous open image
-        // 2. process result
-
-        // dbg!(entry.file_name()); 3.149ms
-        // let _todo = image_handler::process_image(entry);
-
         let path = entry.path();
+        let option = option.clone(); // REFACTOR: maybe pass reference, although option's struct is small enough
 
-        tasks.spawn(async {
-            let _ = process_image(path).await;
+        let file = path
+            .file_name()
+            .ok_or_else(|| anyhow!("Error occurred in parsing filename"))?;
+        let save_path = output_dir.clone().join(file);
+
+        // DEBUG:
+        // let oo = output_dir.clone();
+
+        tasks.spawn(async move {
+            // TODO: catch error, but no way throw outside
+            process_image(path, option, save_path).await
         });
+
+        Ok(())
     })?;
 
     while let Some(res) = tasks.join_next().await {
-        res.unwrap();
+        // res: Result<Result<(), Error>, JoinError>
+        res.unwrap().unwrap();
     }
 
     // DEBUG:
@@ -38,7 +53,10 @@ pub async fn process_images(read_dir: PathBuf) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn visit_dirs(dir: &Path, process_file: &mut dyn FnMut(&fs::DirEntry)) -> anyhow::Result<()> {
+fn visit_dirs(
+    dir: &Path,
+    process_file: &mut dyn FnMut(&fs::DirEntry) -> anyhow::Result<()>,
+) -> anyhow::Result<()> {
     if !dir.is_dir() {
         return Ok(());
     }
@@ -49,19 +67,87 @@ fn visit_dirs(dir: &Path, process_file: &mut dyn FnMut(&fs::DirEntry)) -> anyhow
         if path.is_dir() {
             visit_dirs(&path, process_file)?;
         } else {
-            process_file(&entry);
+            process_file(&entry)?;
         }
     }
 
     Ok(())
 }
 
-async fn process_image(path: PathBuf) -> anyhow::Result<()> {
-    let img = ImageReader::open(&path)?.decode()?; // TODO: If no format was determined, returns an ImageError::Unsupported.
+fn max_common_divisor(a: u32, b: u32) -> u32 {
+    let mut arr = [a, b];
+    arr.sort();
+    let [a, b] = arr;
+
+    if b % a == 0 {
+        a
+    } else {
+        max_common_divisor(a, b % a)
+    }
+}
+
+// calculate maximal width and height of image that satisfy exact ratio, and sides are integer
+fn calc_max_image_size_by_ratio(resolution: Resolution, ratio: Ratio) -> Resolution {
+    let ratio_width = u32::from(ratio.width);
+    let ratio_height = u32::from(ratio.height);
+
+    let unit_length = cmp::min(
+        resolution.width / ratio_width,
+        resolution.height / ratio_height,
+    );
+
+    Resolution::from((unit_length * ratio_width, unit_length * ratio_height))
+}
+
+async fn process_image(
+    path: PathBuf,
+    option: FilterOption,
+    save_path: PathBuf,
+) -> anyhow::Result<()> {
+    let mut img = ImageReader::open(&path)?.decode()?; // TODO: If no format was determined, returns an ImageError::Unsupported.
 
     let (width, height) = img.dimensions();
 
-    dbg!(path, width, height);
+    // resolution
+    if let Some((option, resolution)) = option.resolution {
+        let pass_filter = match option {
+            ResolutionFilterOption::AtLeast => {
+                width >= resolution.width && height >= resolution.height
+            }
+            ResolutionFilterOption::Exactly => {
+                width == resolution.width && height == resolution.height
+            }
+        };
 
-    Ok(())
+        if !pass_filter {
+            return Ok(());
+        }
+    }
+
+    // ratio
+    if let Some((option, ratio)) = option.ratio {
+        let divisor = max_common_divisor(width, height);
+
+        match option {
+            crate::input::RatioFilterOption::FilterOnly => {
+                if !(width / divisor == ratio.width.into()
+                    && height / divisor == ratio.height.into())
+                {
+                    return Ok(());
+                }
+            }
+            crate::input::RatioFilterOption::Crop => {
+                let Resolution { width, height } =
+                    calc_max_image_size_by_ratio(Resolution::from((width, height)), ratio);
+
+                img = img.crop_imm(0, 0, width, height);
+            }
+        }
+    }
+
+    // REFACTOR: seem compressed, even just save without crop
+    match img.save(save_path) {
+        Ok(_) => Ok(()),
+        Err(_) => Err(anyhow!("Error occurred in saving result")),
+    }
 }

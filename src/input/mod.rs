@@ -1,7 +1,8 @@
 mod filter_option;
 
+pub use filter_option::{FilterOption, RatioFilterOption, ResolutionFilterOption};
+
 use anyhow::anyhow;
-use filter_option::ResolutionFilterOption;
 use std::{
     env,
     path::{Path, PathBuf},
@@ -66,8 +67,11 @@ fn filter_by_resolution() -> Option<(ResolutionFilterOption, Resolution)> {
     Some((selected_option, resolution))
 }
 
-fn filter_by_ratio() -> Option<Ratio> {
-    let Ok(true) = cliclack::confirm("Filter by ratio: ").interact() else {
+fn filter_by_ratio() -> Option<(RatioFilterOption, Ratio)> {
+    let Ok(Some(selected_option)) = cliclack::select("Filter by ratio: ")
+        .items(&RatioFilterOption::options())
+        .interact()
+    else {
         return None;
     };
 
@@ -90,14 +94,12 @@ fn filter_by_ratio() -> Option<Ratio> {
         return None;
     };
 
-    Some(ratio)
+    Some((selected_option, ratio))
 }
 
-pub fn get_config() -> anyhow::Result<()> {
-    let result_1 = filter_by_resolution();
-    let result_2 = filter_by_ratio();
+pub fn get_filter_option() -> anyhow::Result<FilterOption> {
+    let resolution = filter_by_resolution();
+    let ratio = filter_by_ratio();
 
-    dbg!(result_1, result_2);
-    // TODO:
-    Ok(())
+    Ok(FilterOption { resolution, ratio })
 }
