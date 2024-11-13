@@ -8,7 +8,7 @@ mod input;
 use image::handler as image_handler;
 
 fn run() -> anyhow::Result<()> {
-    let (read_dir, output_dir) = // TODO: unused var
+    let (read_dir, output_dir) =
         input::get_process_dir().unwrap_or_else(|e| handle_error(e, false));
 
     let read_dir_name = &read_dir
@@ -25,17 +25,57 @@ fn run() -> anyhow::Result<()> {
 
     let filter_option = input::get_filter_option()?;
 
-    let read_files_spinner = cliclack::spinner();
-    read_files_spinner.start("Collecting...");
+    let process_spinner = cliclack::spinner();
+    process_spinner.start("Processing...");
+
+    let mut success_num = 0;
+    let mut failed_tasks: Vec<(String, String)> = vec![];
 
     let rt = Runtime::new().unwrap();
     let _ = rt.block_on(image_handler::process_images(
         read_dir,
         filter_option,
         output_dir,
+        &mut |(filename, result)| {
+            match result {
+                Ok(resolution) => {
+                    success_num += 1;
+                    process_spinner.start(format!(
+                        "Processing...\n\n{}",
+                        console::style(format!("{} -> {}", filename, resolution)).dim()
+                    ));
+                }
+                Err(err_msg) => {
+                    failed_tasks.push((filename, err_msg));
+                }
+            };
+        },
     ));
 
-    read_files_spinner.stop("Done!");
+    process_spinner.stop("Finish!");
+
+    if failed_tasks.is_empty() {
+        cliclack::outro(console::style(format!("Done {success_num} images.")).green())?;
+    } else if success_num == 0 {
+        cliclack::outro_cancel("All failed")?;
+    } else {
+        cliclack::outro(format!(
+            "{}, {}{}\n\n",
+            console::style(format!("Done {success_num} images")).green(),
+            console::style(format!("{} images failed", failed_tasks.len())).red(),
+            {
+                failed_tasks
+                    .iter()
+                    .fold(String::new(), |result_str, (file, err_msg)| {
+                        format!(
+                            "\n   {}\n    {}",
+                            console::style(file).red(),
+                            console::style(err_msg).red().dim()
+                        ) + &result_str
+                    })
+            }
+        ))?;
+    }
 
     Ok(())
 }

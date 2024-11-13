@@ -3,7 +3,6 @@ use image::{GenericImageView, ImageReader};
 use std::{
     cmp, fs,
     path::{Path, PathBuf},
-    time,
 };
 use tokio::task;
 
@@ -15,11 +14,12 @@ pub async fn process_images(
     read_dir: PathBuf,
     option: FilterOption,
     output_dir: PathBuf,
+    on_finish: &mut dyn FnMut((String, Result<Resolution, String>)),
 ) -> anyhow::Result<()> {
-    let mut tasks = task::JoinSet::new();
-
     // DEBUG:
-    let now = time::Instant::now();
+    // let now = time::Instant::now();
+
+    let mut tasks = task::JoinSet::new();
 
     visit_dirs(read_dir.as_path(), &mut |entry| {
         let path = entry.path();
@@ -27,28 +27,42 @@ pub async fn process_images(
 
         let file = path
             .file_name()
-            .ok_or_else(|| anyhow!("Error occurred in parsing filename"))?;
-        let save_path = output_dir.clone().join(file);
+            .ok_or(anyhow!("Error occurred in parsing filename"))?
+            .to_str()
+            .ok_or(anyhow!("Error occurred in parsing filename"))?
+            .to_string();
+        let save_path = output_dir.clone().join(&file);
 
         // DEBUG:
         // let oo = output_dir.clone();
 
         tasks.spawn(async move {
-            // TODO: catch error, but no way throw outside
-            process_image(path, option, save_path).await
+            let result = process_image(path, option, save_path).await;
+
+            match result {
+                Ok(None) => Ok(None),
+                Ok(Some(resolution)) => Ok(Some((file, resolution))),
+                Err(e) => Err((file, e)),
+            }
         });
 
         Ok(())
     })?;
 
     while let Some(res) = tasks.join_next().await {
-        // res: Result<Result<(), Error>, JoinError>
-        res.unwrap().unwrap();
+        match res {
+            Ok(res) => match res {
+                Ok(None) => (),
+                Ok(Some((filename, resolution))) => on_finish((filename, Ok(resolution))),
+                Err((filename, err)) => on_finish((filename, Err(err.to_string()))),
+            },
+            Err(_) => todo!(),
+        }
     }
 
     // DEBUG:
-    let elapsed = now.elapsed();
-    println!("Elapsed: {:.3?}", elapsed);
+    // let elapsed = now.elapsed();
+    // println!("Elapsed: {:.3?}", elapsed);
 
     Ok(())
 }
@@ -103,7 +117,7 @@ async fn process_image(
     path: PathBuf,
     option: FilterOption,
     save_path: PathBuf,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Option<Resolution>> {
     let mut img = ImageReader::open(&path)?.decode()?; // TODO: If no format was determined, returns an ImageError::Unsupported.
 
     let (width, height) = img.dimensions();
@@ -120,7 +134,7 @@ async fn process_image(
         };
 
         if !pass_filter {
-            return Ok(());
+            return Ok(None);
         }
     }
 
@@ -133,7 +147,9 @@ async fn process_image(
                 if !(width / divisor == ratio.width.into()
                     && height / divisor == ratio.height.into())
                 {
-                    return Ok(());
+                    // return Ok(None);
+                    // DEBUG:
+                    return Err(anyhow!("Test error"));
                 }
             }
             crate::input::RatioFilterOption::Crop => {
@@ -147,7 +163,7 @@ async fn process_image(
 
     // REFACTOR: seem compressed, even just save without crop
     match img.save(save_path) {
-        Ok(_) => Ok(()),
+        Ok(_) => Ok(Some(Resolution::from((width, height)))),
         Err(_) => Err(anyhow!("Error occurred in saving result")),
     }
 }
