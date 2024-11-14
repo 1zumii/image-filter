@@ -24,6 +24,7 @@ fn run() -> anyhow::Result<()> {
         .to_str()
         .ok_or(anyhow!("Error occurred in parsing directory"))
         .unwrap_or_else(|e| handle_error(e, false));
+    println!("\n");
     cliclack::intro(
         console::style(format!(" {} ", read_dir_name))
             .on_cyan()
@@ -63,24 +64,12 @@ fn run() -> anyhow::Result<()> {
 
     if failed_tasks.is_empty() {
         cliclack::outro(console::style(format!("Done {success_num} images.")).green())?;
-    } else if success_num == 0 {
-        cliclack::outro_cancel("All failed")?;
     } else {
         cliclack::outro(format!(
             "{}, {}{}\n\n",
             console::style(format!("Done {success_num} images")).green(),
             console::style(format!("{} images failed", failed_tasks.len())).red(),
-            {
-                failed_tasks
-                    .iter()
-                    .fold(String::new(), |result_str, (file, err_msg)| {
-                        format!(
-                            "\n   {}\n    {}",
-                            console::style(file).red(),
-                            console::style(err_msg).red().dim()
-                        ) + &result_str
-                    })
-            }
+            format_failed_tasks(&failed_tasks)
         ))?;
     }
 
@@ -99,4 +88,16 @@ fn handle_error(e: anyhow::Error, after_intro: bool) -> ! {
     }
 
     process::exit(1);
+}
+
+fn format_failed_tasks(tasks: &[(String, String)]) -> String {
+    tasks
+        .iter()
+        .fold(String::new(), |result_str, (file, err_msg)| {
+            format!(
+                "\n   {}\n    {}",
+                console::style(file).red(),
+                console::style(err_msg).red().dim()
+            ) + &result_str
+        })
 }
