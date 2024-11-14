@@ -1,5 +1,11 @@
-## ⌨️ Development
+![](./docs/assets/demo.gif)
 
-```shell
-cargo run $INPUT_PATH $OUTPUT_PATH
+## 📦 Installation
+```sh
+cargo install --git https://github.com/1zumii/image-filter.git
+```
+
+## 🔧 Usage
+```sh
+imgf $INPUT_PATH $OUTPUT_PATH
 ```
