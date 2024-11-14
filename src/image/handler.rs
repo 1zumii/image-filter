@@ -147,9 +147,7 @@ async fn process_image(
                 if !(width / divisor == ratio.width.into()
                     && height / divisor == ratio.height.into())
                 {
-                    // return Ok(None);
-                    // DEBUG:
-                    return Err(anyhow!("Test error"));
+                    return Ok(None);
                 }
             }
             crate::input::RatioFilterOption::Crop => {
