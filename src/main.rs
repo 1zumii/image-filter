@@ -8,6 +8,13 @@ mod input;
 use image::handler as image_handler;
 
 fn run() -> anyhow::Result<()> {
+    ctrlc::set_handler(|| {
+        cliclack::outro_cancel(console::style("Cancelled!").magenta()).unwrap();
+        console::Term::stdout().show_cursor().unwrap();
+        process::exit(0);
+    })
+    .expect("Error occurred in registering handler");
+
     let (read_dir, output_dir) =
         input::get_process_dir().unwrap_or_else(|e| handle_error(e, false));
 

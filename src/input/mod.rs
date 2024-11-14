@@ -6,6 +6,7 @@ use anyhow::anyhow;
 use std::{
     env,
     path::{Path, PathBuf},
+    process,
 };
 
 use crate::image::{
@@ -42,7 +43,8 @@ fn filter_by_resolution() -> Option<(ResolutionFilterOption, Resolution)> {
         .items(&ResolutionFilterOption::options())
         .interact()
     else {
-        return None;
+        // TODO: handle ctrl-c and esc differently
+        process::exit(1);
     };
 
     cliclack::log::info(format!("📏 {}", console::style("width × height").dim())).ok();
@@ -61,7 +63,7 @@ fn filter_by_resolution() -> Option<(ResolutionFilterOption, Resolution)> {
         .filter_mode()
         .interact()
     else {
-        return None;
+        process::exit(1);
     };
 
     Some((selected_option, resolution))
@@ -72,7 +74,7 @@ fn filter_by_ratio() -> Option<(RatioFilterOption, Ratio)> {
         .items(&RatioFilterOption::options())
         .interact()
     else {
-        return None;
+        process::exit(1);
     };
 
     cliclack::log::info(format!("📏 {}", console::style("width : height").dim())).ok();
@@ -91,7 +93,7 @@ fn filter_by_ratio() -> Option<(RatioFilterOption, Ratio)> {
         .filter_mode()
         .interact()
     else {
-        return None;
+        process::exit(1);
     };
 
     Some((selected_option, ratio))
